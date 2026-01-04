@@ -3,7 +3,7 @@ const corsOptions = {
   origin: [
     'http://localhost:3000',
     'http://localhost:5173', // Vite default port
-   'https://grillsandgather.onrender.com',     // NEW frontend ✅
+   'https://grillsandgather.vercel.app/',     // NEW frontend ✅
     process.env.FRONTEND_URL // Add custom frontend URL from env
   ].filter(Boolean), // Remove undefined values
   credentials: true,
