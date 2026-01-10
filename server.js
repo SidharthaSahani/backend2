@@ -44,6 +44,10 @@ async function startServer() {
     process.exit(1);
   }
 }
+  
+
+// there is error in hosting side i ma not able to CRUD crausel image and not able to relsese table in hosting side there is many error and seclect the image in food update and management ..  and git ma push garay ko xaina , 
+
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {

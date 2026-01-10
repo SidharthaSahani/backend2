@@ -6,7 +6,7 @@ const uploadController = require('../controllers/uploadController');
 const { upload } = require('../config/multer');
 
 // PROTECTED - Only admins can upload
-router.post('/', adminAuth, upload.single('image'), asyncHandler(uploadController.uploadImage));
+router.post('/', adminAuth, upload.single('image'), asyncHandler(uploadController.uploadFile));
 router.post('/carousel', adminAuth, upload.single('image'), asyncHandler(uploadController.uploadCarouselImage));
 
 module.exports = router;
