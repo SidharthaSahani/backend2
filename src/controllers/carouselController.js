@@ -18,8 +18,7 @@ exports.getCarouselImages = async (req, res) => {
 // ✅ NEW: Upload single carousel image
 exports.addCarouselImage = async (req, res) => {
   try {
-    console.log('📤 Adding carousel image...');
-    console.log('File received:', req.file);
+    // Adding carousel image
     
     if (!req.file) {
       return res.status(400).json({ 
@@ -33,7 +32,6 @@ exports.addCarouselImage = async (req, res) => {
     
     // Create the image URL
     const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-    console.log('Image URL created:', imageUrl);
     
     // Add to database
     await carouselCollection.insertOne({
@@ -45,10 +43,10 @@ exports.addCarouselImage = async (req, res) => {
     const images = await carouselCollection.find({}).sort({ createdAt: 1 }).toArray();
     const imageUrls = images.map(img => img.url);
     
-    console.log('✅ Image uploaded successfully. Total images:', imageUrls.length);
     sendSuccess(res, { url: imageUrl, images: imageUrls }, 'Image uploaded successfully');
   } catch (error) {
-    console.error('❌ Error adding carousel image:', error);
+    // Log error without exposing sensitive information
+    console.error('❌ Error adding carousel image:', error.message);
     sendError(res, error);
   }
 };

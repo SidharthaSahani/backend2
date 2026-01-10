@@ -1,48 +1,66 @@
-// src/middleware/adminAuth.js
-// Simple admin authentication middleware
-const ADMIN_CREDENTIALS = {
-  email: 'admin@restaurant.com',
-  password: 'admin123'
-};
+// ============================================
+// FILE 2: backend/src/middleware/adminAuth.js - BETTER ERROR LOGGING
+// ============================================
+const jwt = require('jsonwebtoken');
 
 const adminAuth = (req, res, next) => {
-  // Check for authorization header
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader) {
-    return res.status(401).json({
-      success: false,
-      error: 'Access denied. No authorization header provided.'
-    });
-  }
-  
-  // Check if it's a Bearer token
-  const token = authHeader.split(' ')[1];
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      error: 'Access denied. No token provided.'
-    });
-  }
-  
   try {
-    // Decode the token (which is base64 encoded email)
-    const decodedEmail = decodeURIComponent(atob(token));
+    const authHeader = req.headers.authorization;
     
-    // Verify that the decoded email matches admin credentials
-    if (decodedEmail === ADMIN_CREDENTIALS.email) {
-      req.admin = { email: decodedEmail };
-      next();
-    } else {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid credentials. Access denied.'
+        error: 'Access denied. No token provided.'
       });
     }
+
+    const token = authHeader.split(' ')[1];
+    
+    // ✅ Added: Check if token looks like a JWT (3 parts separated by dots)
+    if (!token || token.split('.').length !== 3) {
+      console.error('❌ Auth error: Malformed token format');
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid token format.'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    req.admin = {
+      email: decoded.email,
+      role: decoded.role,
+      loginTime: decoded.loginTime
+    };
+    
+    // ✅ Reduced logging - only in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('✅ Admin authenticated:', decoded.email);
+    }
+    
+    next();
+    
   } catch (error) {
-    return res.status(401).json({
+    // ✅ Better error handling
+    console.error('❌ Auth error:', error.message);
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid token. Please login again.'
+      });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        error: 'Token expired. Please login again.'
+      });
+    }
+    
+    return res.status(500).json({
       success: false,
-      error: 'Invalid token format.'
+      error: 'Authentication failed.'
     });
   }
 };
