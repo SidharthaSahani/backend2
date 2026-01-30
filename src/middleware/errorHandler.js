@@ -6,7 +6,27 @@ const errorHandler = (err, req, res, next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({
       success: false,
-      error: 'File size exceeds the 5MB limit'
+      error: 'File size exceeds the 10MB limit'
+    });
+  }
+
+  // File type validation errors
+  if (err.message && (
+    err.message.includes('Only image files') || 
+    err.message.includes('Invalid file type') ||
+    err.message.includes('allowed')
+  )) {
+    return res.status(400).json({
+      success: false,
+      error: err.message
+    });
+  }
+
+  // Cloudinary errors
+  if (err.message && err.message.includes('Cloudinary')) {
+    return res.status(400).json({
+      success: false,
+      error: 'Image upload failed. Please try again.'
     });
   }
 
