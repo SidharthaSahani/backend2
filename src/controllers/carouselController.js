@@ -14,6 +14,7 @@ exports.getCarouselImages = async (req, res) => {
     const imageData = images.map(img => ({
       id: img._id.toString(),
       url: img.url,
+      publicId: img.publicId || null,
       createdAt: img.createdAt
     }));
     
@@ -26,8 +27,6 @@ exports.getCarouselImages = async (req, res) => {
 // ✅ NEW: Upload single carousel image
 exports.addCarouselImage = async (req, res) => {
   try {
-    // Adding carousel image
-    
     if (!req.file) {
       return res.status(400).json({ 
         success: false, 
@@ -38,12 +37,31 @@ exports.addCarouselImage = async (req, res) => {
     const db = getDatabase();
     const carouselCollection = db.collection('carousel_images');
     
-    // Create the image URL
-    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    // Handle both Cloudinary and fallback scenarios
+    let imageUrl;
+    
+    // Check if it's a Cloudinary upload
+    if (req.file.path && req.file.path.includes('cloudinary')) {
+      imageUrl = req.file.path;
+      console.log(`✅ Carousel image uploaded to Cloudinary: ${imageUrl}`);
+    }
+    // Handle fallback scenario (this route should ideally use Cloudinary)
+    else if (req.file.buffer) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Cloudinary configuration required for carousel images. Please contact administrator.' 
+      });
+    } else {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Invalid file upload configuration.' 
+      });
+    }
     
     // Add to database
     const result = await carouselCollection.insertOne({
       url: imageUrl,
+      publicId: req.file.filename || req.file.public_id || null,
       createdAt: new Date()
     });
     
@@ -52,6 +70,7 @@ exports.addCarouselImage = async (req, res) => {
     const imageData = images.map(img => ({
       id: img._id.toString(),
       url: img.url,
+      publicId: img.publicId || null,
       createdAt: img.createdAt
     }));
     
@@ -91,6 +110,7 @@ exports.updateAllCarouselImages = async (req, res) => {
     const imageData = updatedImages.map(img => ({
       id: img._id.toString(),
       url: img.url,
+      publicId: img.publicId || null,
       createdAt: img.createdAt
     }));
     
@@ -133,6 +153,7 @@ exports.deleteCarouselImage = async (req, res) => {
     const imageData = updatedImages.map(img => ({
       id: img._id.toString(),
       url: img.url,
+      publicId: img.publicId || null,
       createdAt: img.createdAt
     }));
     
@@ -181,17 +202,48 @@ exports.updateCarouselImage = async (req, res) => {
       });
     }
     
-    const newImageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    // Handle both Cloudinary and fallback scenarios
+    let newImageUrl;
+    let newPublicId = null;
+    
+    // Check if it's a Cloudinary upload
+    if (req.file.path && req.file.path.includes('cloudinary')) {
+      newImageUrl = req.file.path;
+      newPublicId = req.file.filename || req.file.public_id;
+      console.log(`✅ Carousel image updated in Cloudinary: ${newImageUrl}`);
+    }
+    // Handle fallback scenario
+    else if (req.file.buffer) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Cloudinary configuration required for carousel images. Please contact administrator.' 
+      });
+    } else {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Invalid file upload configuration.' 
+      });
+    }
+    
+    const updateData = { 
+      url: newImageUrl, 
+      updatedAt: new Date() 
+    };
+    
+    if (newPublicId) {
+      updateData.publicId = newPublicId;
+    }
     
     await carouselCollection.updateOne(
       { _id: imageToUpdate._id },
-      { $set: { url: newImageUrl, updatedAt: new Date() } }
+      { $set: updateData }
     );
     
     const updatedImages = await carouselCollection.find({}).sort({ createdAt: 1 }).toArray();
     const imageData = updatedImages.map(img => ({
       id: img._id.toString(),
       url: img.url,
+      publicId: img.publicId || null,
       createdAt: img.createdAt
     }));
     

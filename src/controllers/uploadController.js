@@ -1,4 +1,5 @@
 // ========== controllers/uploadController.js ==========
+// Handles file uploads with Cloudinary integration and fallback support
 const { getDatabase } = require('../config/database');
 const { sendSuccess, sendError } = require('../utils/responseHelper');
 
@@ -8,18 +9,31 @@ exports.uploadFile = (req, res) => {
     return res.status(400).json({ success: false, error: 'No file uploaded' });
   }
   
-  // Ensure we're getting Cloudinary URL
-  const fileUrl = req.file.path || req.file.secure_url;
+  // Handle both Cloudinary and fallback scenarios
+  let fileUrl;
   
-  // Validate it's a Cloudinary URL
-  if (!fileUrl || !fileUrl.includes('cloudinary')) {
+  // Check if it's a Cloudinary upload
+  if (req.file.path && req.file.path.includes('cloudinary')) {
+    fileUrl = req.file.path;
+    console.log(`✅ File uploaded to Cloudinary: ${fileUrl}`);
+  } 
+  // Check if it's a fallback memory storage upload
+  else if (req.file.buffer) {
+    // In fallback mode, we'd typically save to local storage or another service
+    // For now, return an error indicating Cloudinary is required for this endpoint
     return res.status(500).json({ 
       success: false, 
-      error: 'File not uploaded to Cloudinary. Check configuration.' 
+      error: 'Cloudinary configuration required for file uploads. Please contact administrator.' 
     });
   }
   
-  console.log(`✅ File uploaded to Cloudinary: ${fileUrl}`);
+  if (!fileUrl) {
+    return res.status(500).json({ 
+      success: false, 
+      error: 'File upload failed. Invalid configuration.' 
+    });
+  }
+  
   sendSuccess(res, { url: fileUrl }, 'File uploaded successfully');
 };
 
@@ -30,23 +44,36 @@ exports.uploadCarouselImage = async (req, res) => {
   }
   
   try {
-    // Ensure we're getting Cloudinary URL
-    const fileUrl = req.file.path || req.file.secure_url;
+    let fileUrl;
+    let publicId = null;
     
-    // Validate it's a Cloudinary URL
-    if (!fileUrl || !fileUrl.includes('cloudinary')) {
-      throw new Error('❌ Image not uploaded to Cloudinary. Check Cloudinary configuration.');
+    // Handle Cloudinary upload
+    if (req.file.path && req.file.path.includes('cloudinary')) {
+      fileUrl = req.file.path;
+      publicId = req.file.filename || req.file.public_id;
+      console.log(`✅ Carousel image uploaded to Cloudinary: ${fileUrl}`);
+    }
+    // Handle fallback scenario
+    else if (req.file.buffer) {
+      // In fallback mode, return error indicating Cloudinary is required
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Cloudinary configuration required for carousel images. Please contact administrator.' 
+      });
+    }
+    
+    if (!fileUrl) {
+      throw new Error('❌ Image upload failed. Invalid configuration.');
     }
     
     const db = getDatabase();
     const carouselCollection = db.collection('carousel_images');
     await carouselCollection.insertOne({ 
       url: fileUrl, 
-      publicId: req.file.filename || req.file.public_id, // Cloudinary public ID
+      publicId: publicId,
       createdAt: new Date() 
     });
     
-    console.log(`✅ Carousel image uploaded to Cloudinary: ${fileUrl}`);
     sendSuccess(res, { url: fileUrl }, 'Carousel image uploaded successfully');
   } catch (error) {
     console.error('❌ Carousel upload error:', error.message);
@@ -66,7 +93,16 @@ exports.deleteImage = async (req, res) => {
       });
     }
     
-    const { cloudinary } = require('../config/cloudinary');
+    const { cloudinary, isConfigured } = require('../config/cloudinary');
+    
+    // Check if Cloudinary is configured
+    if (!isConfigured || !cloudinary) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Cloudinary not configured. Cannot delete images.' 
+      });
+    }
+    
     const result = await cloudinary.uploader.destroy(publicId);
     
     if (result.result === 'ok') {

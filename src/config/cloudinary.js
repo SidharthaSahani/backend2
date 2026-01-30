@@ -9,7 +9,17 @@ const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
 // Validate Cloudinary credentials
 if (!cloudName || !apiKey || !apiSecret) {
-  throw new Error('❌ Cloudinary credentials missing in environment variables');
+  console.warn('⚠️  Cloudinary credentials missing - running in fallback mode');
+  console.warn('🔧 Some image upload features may be disabled');
+  
+  // Fallback configuration for basic functionality
+  module.exports = {
+    cloudinary: null,
+    storage: null,
+    fileFilter: null,
+    isConfigured: false
+  };
+  return;
 }
 
 cloudinary.config({
@@ -53,5 +63,6 @@ const fileFilter = (req, file, cb) => {
 module.exports = {
   cloudinary,
   storage,
-  fileFilter
+  fileFilter,
+  isConfigured: true
 };
