@@ -4,13 +4,13 @@ const router = express.Router();
 const { adminLogin, verifyToken } = require('../controllers/authController');
 const adminAuth = require('../middleware/adminAuth');
 
-// Rate limiter: 5 attempts per 15 minutes
+// Rate limiter: 10 attempts per 1 hour
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 attempts
   message: {
     success: false,
-    error: 'Too many login attempts. Please try again in 15 minutes.'
+    error: 'Too many login attempts. Please try again in 1 hour.'
   },
   standardHeaders: true,
   legacyHeaders: false,
